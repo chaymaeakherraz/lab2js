@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Météo Realtime</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      display: flex;
+      gap: 20px;
+    }
+
+    table {
+      width: 100%;
+      background: white;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+    }
+
+    th {
+      background: #eee;
+    }
+
+    canvas {
+      background: white;
+      margin-top: 20px;
+    }
+
+    .left {
+      flex: 1;
+    }
+
+    .right {
+      flex: 2;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="left">
+    <table id="myTable">
+      <thead>
+        <tr>
+          <th>Mois</th>
+          <th>Temp (Max/Min)</th>
+          <th>Pluie</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="right">
+    <canvas id="chartTemp"></canvas>
+    <canvas id="chartRain"></canvas>
+  </div>
+
+</div>
+
+<script>
+const mois = [];
+const tmax = [];
+const tmin = [];
+const pluie = [];
+
+/* ===== Chart Temp ===== */
+const ctx1 = document.getElementById("chartTemp").getContext("2d");
+
+const chartTemp = new Chart(ctx1, {
+  type: "line",
+  data: {
+    labels: mois,
+    datasets: [
+      {
+        label: "Max",
+        data: tmax,
+        borderColor: "red",
+        fill: false
+      },
+      {
+        label: "Min",
+        data: tmin,
+        borderColor: "blue",
+        fill: false
+      }
+    ]
+  }
+});
+
+/* ===== Chart Rain ===== */
+const ctx2 = document.getElementById("chartRain").getContext("2d");
+
+const chartRain = new Chart(ctx2, {
+  type: "bar",
+  data: {
+    labels: mois,
+    datasets: [
+      {
+        label: "Pluie",
+        data: pluie,
+        backgroundColor: "green"
+      }
+    ]
+  }
+});
+
+/* ===== WebSocket ===== */
+const ws = new WebSocket("ws://localhost:5002");
+
+ws.onopen = () => {
+  console.log("Connected");
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+
+  mois.push(data.mois);
+  tmax.push(Number(data.tmax));
+  tmin.push(Number(data.tmin));
+  pluie.push(Number(data.pluie));
+
+  // table row
+  const row = `
+    <tr>
+      <td>${data.mois}</td>
+      <td>${data.tmax} / ${data.tmin}</td>
+      <td>${data.pluie}</td>
+    </tr>
+  `;
+
+  document.querySelector("#myTable tbody").insertAdjacentHTML("beforeend", row);
+
+  chartTemp.update();
+  chartRain.update();
+};
+
+ws.onerror = (err) => {
+  console.log("WebSocket error", err);
+};
+</script>
+
+</body>
+</html>
